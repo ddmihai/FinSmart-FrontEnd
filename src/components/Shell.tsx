@@ -110,7 +110,7 @@ export default function Shell() {
             </ul>
           </div>
         )}
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto px-2 sm:px-0">
             <Outlet />
           </div>
         </main>

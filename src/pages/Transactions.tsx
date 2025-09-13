@@ -3,7 +3,7 @@ import api, { apiBaseUrl } from '../lib/api'
 import Modal from '../components/Modal'
 import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import { required } from '../lib/validation'
-import { Calendar, Search as SearchIcon, PlusCircle, FileDown, FileSpreadsheet, Share2, Eye, EyeOff, ShieldBan, History as HistoryIcon, Trash2, Undo2 } from 'lucide-react'
+import { Calendar, Search as SearchIcon, PlusCircle, FileDown, FileSpreadsheet, Share2, Eye, EyeOff, ShieldBan, History as HistoryIcon, Trash2, Undo2, FolderX } from 'lucide-react'
 
 type Account = { _id: string; type: string }
 type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string; note?: string; category?: string }
@@ -28,6 +28,8 @@ export default function Transactions() {
   const [blockedOpen, setBlockedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [history, setHistory] = useState<any[]>([])
+  const [hiddenOpen, setHiddenOpen] = useState(false)
+  const [hiddenList, setHiddenList] = useState<Tx[]>([])
   const [editTx, setEditTx] = useState<{ id: string; name: string; category: string; note: string } | null>(null)
 
   useEffect(() => {
@@ -53,6 +55,14 @@ export default function Transactions() {
   }
   useEffect(() => { load() }, [accountId])
   useEffect(() => { load() }, [includeHidden, hiddenOnly])
+
+  const loadHiddenList = async () => {
+    if (!accountId) return
+    try {
+      const resp = await api.get('/api/transactions', { params: { accountId, hiddenOnly: 1 } })
+      setHiddenList(resp.data)
+    } catch {}
+  }
 
   const downloadPdf = async () => {
     if (!accountId) return
@@ -148,6 +158,7 @@ export default function Transactions() {
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={includeHidden} onChange={e=>{setIncludeHidden(e.target.checked); if (hiddenOnly && e.target.checked===false) setHiddenOnly(false)}}/> <Eye size={14}/> Include hidden</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={hiddenOnly} onChange={e=>{setHiddenOnly(e.target.checked); if (e.target.checked) setIncludeHidden(true)}}/> <EyeOff size={14}/> Hidden only</label>
             <button type="button" className="btn-ghost" onClick={()=> setBlockedOpen(true)}><ShieldBan size={16}/> Blocked merchants</button>
+            <button type="button" className="btn-ghost" onClick={()=> { setHiddenOpen(true); loadHiddenList() }}><FolderX size={16}/> Hidden transactions</button>
             <button type="button" className="btn-ghost" onClick={()=> setHistoryOpen(true)}><HistoryIcon size={16}/> History</button>
           </div>
         </div>
@@ -173,8 +184,8 @@ export default function Transactions() {
           <button className="btn w-full" type="submit">Add</button>
         </form>
       </Modal>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
               <th className="text-left px-3 py-2">Date</th>
@@ -217,6 +228,22 @@ export default function Transactions() {
                 <div className="text-xs opacity-60">Blocked {new Date(b.createdAt).toLocaleString()}</div>
               </div>
               <button className="btn-secondary" onClick={async ()=> { try { await api.delete(`/api/transactions/blocked/${b._id}`); const bl = await api.get('/api/transactions/blocked'); setBlocked(bl.data) } catch {} }}><Trash2 size={14}/> Remove</button>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Hidden transactions modal */}
+      <Modal open={hiddenOpen} onClose={()=> setHiddenOpen(false)} title="Hidden transactions">
+        <div className="space-y-2 max-h-80 overflow-auto">
+          {hiddenList.length === 0 && <div className="text-sm opacity-70">No hidden transactions for this account.</div>}
+          {hiddenList.map((t) => (
+            <div key={t._id} className="flex items-center justify-between gap-3 px-2 py-1 rounded-lg hover:bg-white/5">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{t.createdAt.slice(0,10)} — {t.name}{t.category ? ` (${t.category})` : ''}</div>
+                <div className="text-xs opacity-60 truncate">{t.note || '—'}</div>
+              </div>
+              <button className="btn-secondary" onClick={async ()=> { try { await api.post(`/api/transactions/${t._id}/unhide`); await loadHiddenList(); await load() } catch {} }}><Undo2 size={14}/> Unhide</button>
             </div>
           ))}
         </div>
