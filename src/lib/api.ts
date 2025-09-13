@@ -58,11 +58,18 @@ api.interceptors.request.use(async (config) => {
       (config.headers as any)['Authorization'] = `Bearer ${accessToken}`
     }
   }
+  // Always attach CSRF header if we have it
+  if (csrfToken) {
+    config.headers = config.headers || {}
+    ;(config.headers as any)['x-csrf-token'] = csrfToken
+  }
   if (!csrfToken) {
     const url = (config.url || '').toString()
     const isCsrfEndpoint = url.includes('/api/security/csrf-token')
     if (!isCsrfEndpoint) {
-      await ensureCsrf()
+      const t = await ensureCsrf()
+      config.headers = config.headers || {}
+      ;(config.headers as any)['x-csrf-token'] = t || csrfToken
     }
   }
   return config
