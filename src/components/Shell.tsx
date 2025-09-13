@@ -46,6 +46,7 @@ export default function Shell() {
           <NavItem to="/notifications" icon={<Bell size={18} />}>Notifications</NavItem>
           <NavItem to="/analytics" icon={<BarChart2 size={18} />}>Analytics</NavItem>
           <NavItem to="/settings" icon={<SettingsIcon size={18} />}>Settings</NavItem>
+          <NavItem to="/diagnostics" icon={<SettingsIcon size={18} />}>Diagnostics</NavItem>
         </nav>
       </aside>
       <main className="p-4 lg:p-8">

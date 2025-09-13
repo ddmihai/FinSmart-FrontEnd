@@ -49,6 +49,13 @@ export async function ensureCsrf() {
 }
 
 api.interceptors.request.use(async (config) => {
+  // Always attach Authorization if we have a token
+  if (accessToken) {
+    config.headers = config.headers || {}
+    if (!('Authorization' in config.headers)) {
+      (config.headers as any)['Authorization'] = `Bearer ${accessToken}`
+    }
+  }
   if (!csrfToken) {
     const url = (config.url || '').toString()
     const isCsrfEndpoint = url.includes('/api/security/csrf-token')

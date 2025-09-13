@@ -9,6 +9,7 @@ import Settings from './pages/Settings'
 import Transfers from './pages/Transfers'
 import Goals from './pages/Goals'
 import Insights from './pages/Insights'
+import Diagnostics from './pages/Diagnostics'
 import { useAuth } from './state/AuthContext'
 import Shell from './components/Shell'
 
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/settings" element={<Protected><Settings /></Protected>} />
         <Route path="/goals" element={<Protected><Goals /></Protected>} />
         <Route path="/insights" element={<Protected><Insights /></Protected>} />
+        <Route path="/diagnostics" element={<Protected><Diagnostics /></Protected>} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
