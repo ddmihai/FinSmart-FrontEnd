@@ -3,7 +3,7 @@ import api, { apiBaseUrl } from '../lib/api'
 import Modal from '../components/Modal'
 import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import { required } from '../lib/validation'
-import { Calendar, Search as SearchIcon, PlusCircle, FileDown, FileSpreadsheet, Share2, Eye, EyeOff, ShieldBan, History as HistoryIcon, Trash2, Undo2, FolderX } from 'lucide-react'
+import { Calendar, Search as SearchIcon, PlusCircle, FileDown, FileSpreadsheet, Share2, Eye, EyeOff, ShieldBan, History as HistoryIcon, Trash2, Undo2, FolderX, SlidersHorizontal, MoreHorizontal } from 'lucide-react'
 
 type Account = { _id: string; type: string }
 type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string; note?: string; category?: string }
@@ -28,6 +28,8 @@ export default function Transactions() {
   const [blockedOpen, setBlockedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [history, setHistory] = useState<any[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const [hiddenOpen, setHiddenOpen] = useState(false)
   const [hiddenList, setHiddenList] = useState<Tx[]>([])
   const [editTx, setEditTx] = useState<{ id: string; name: string; category: string; note: string } | null>(null)
@@ -102,7 +104,13 @@ export default function Transactions() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Transactions</h1>
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Mobile compact toolbar */}
+      <div className="md:hidden flex flex-wrap gap-2">
+        <button className="btn" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16}/> Filters</button>
+        <button className="btn-secondary" onClick={() => setActionsOpen(true)}><MoreHorizontal size={16}/> Actions</button>
+      </div>
+      {/* Desktop filters + actions */}
+      <div className="hidden md:grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="block text-sm opacity-80 mb-1">Account</label>
           <select className="input" value={accountId} onChange={e => setAccountId(e.target.value)}>
@@ -184,7 +192,7 @@ export default function Transactions() {
           <button className="btn w-full" type="submit">Add</button>
         </form>
       </Modal>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto overflow-y-visible">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
@@ -230,6 +238,75 @@ export default function Transactions() {
               <button className="btn-secondary" onClick={async ()=> { try { await api.delete(`/api/transactions/blocked/${b._id}`); const bl = await api.get('/api/transactions/blocked'); setBlocked(bl.data) } catch {} }}><Trash2 size={14}/> Remove</button>
             </div>
           ))}
+        </div>
+      </Modal>
+
+      {/* Mobile Filters modal */}
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm opacity-80 mb-1">Account</label>
+            <select className="input" value={accountId} onChange={e => setAccountId(e.target.value)}>
+              {accounts.map(a => <option key={a._id} value={a._id}>{a.type}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm opacity-80 mb-1">Search</label>
+            <input className="input" placeholder="Search name" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative">
+              <label className="block text-sm opacity-80 mb-1">From</label>
+              <input className="input pr-10" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+              {!from && <span className="pointer-events-none absolute left-3 bottom-2 text-xs opacity-60">YYYY-MM-DD</span>}
+              <Calendar size={16} className="absolute right-3 bottom-3 opacity-60 pointer-events-none" />
+            </div>
+            <div className="relative">
+              <label className="block text-sm opacity-80 mb-1">To</label>
+              <input className="input pr-10" type="date" value={to} onChange={e => setTo(e.target.value)} />
+              {!to && <span className="pointer-events-none absolute left-3 bottom-2 text-xs opacity-60">YYYY-MM-DD</span>}
+              <Calendar size={16} className="absolute right-3 bottom-3 opacity-60 pointer-events-none" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={includeHidden} onChange={e=>{setIncludeHidden(e.target.checked); if (hiddenOnly && e.target.checked===false) setHiddenOnly(false)}}/> <Eye size={14}/> Include hidden</label>
+            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={hiddenOnly} onChange={e=>{setHiddenOnly(e.target.checked); if (e.target.checked) setIncludeHidden(true)}}/> <EyeOff size={14}/> Hidden only</label>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn w-full" onClick={() => { setFiltersOpen(false); load(); }}><SearchIcon size={16}/> Apply</button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mobile Actions modal */}
+      <Modal open={actionsOpen} onClose={() => setActionsOpen(false)} title="Actions">
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button className="btn" onClick={() => { setActionsOpen(false); setExpenseOpen(true) }}><PlusCircle size={16}/> Add Expense</button>
+            <button className="btn-secondary" onClick={() => { setActionsOpen(false); downloadPdf() }}><FileDown size={16}/> PDF</button>
+            <button className="btn" onClick={async () => {
+              try {
+                const res = await api.get('/api/statements/export', { params: { accountId }, responseType: 'blob' })
+                const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+                const a = document.createElement('a'); a.href = url; a.download = 'statement.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+              } catch (e: any) {
+                alert(e.response?.data?.error || 'Export failed')
+              }
+            }}><FileSpreadsheet size={16}/> CSV</button>
+            <button className="btn-secondary" onClick={async () => {
+              try {
+                const r = await api.post('/api/statements/share', { accountId, ttlHours: 24, filters: { accountId } })
+                const url = `${apiBaseUrl}/api/statements/shared/${r.data.token}`
+                setShareUrl(url); alert('Share link created')
+              } catch (e: any) { alert(e.response?.data?.error || 'Share failed') }
+            }}><Share2 size={16}/> Share</button>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button type="button" className="btn-ghost" onClick={()=> { setActionsOpen(false); setHiddenOpen(true); }}><FolderX size={16}/> Hidden transactions</button>
+            <button type="button" className="btn-ghost" onClick={()=> { setActionsOpen(false); setBlockedOpen(true); }}><ShieldBan size={16}/> Blocked merchants</button>
+            <button type="button" className="btn-ghost" onClick={()=> { setActionsOpen(false); setHistoryOpen(true); }}><HistoryIcon size={16}/> History</button>
+          </div>
+          {shareUrl && <div className="mt-2 text-xs break-all">Share URL: <a className="underline" href={shareUrl} target="_blank" rel="noreferrer">{shareUrl}</a></div>}
         </div>
       </Modal>
 
