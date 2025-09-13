@@ -8,5 +8,8 @@ services:
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_URL
-        value: "https://finsmart-backend.onrender.com"
-
+        value: "https://finsmart-backend-558n.onrender.com"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
