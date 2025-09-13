@@ -25,7 +25,9 @@ export async function getDiagnostics() {
 
 const api = axios.create({
   baseURL: apiBaseUrl,
-  withCredentials: true
+  withCredentials: true,
+  xsrfCookieName: '_csrf',
+  xsrfHeaderName: 'x-csrf-token'
 })
 
 let accessToken: string | null = null
