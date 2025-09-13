@@ -1,6 +1,15 @@
 import axios from 'axios'
 
-export const apiBaseUrl: string = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000'
+let resolvedBase: string = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000'
+// Safety: if running on Render and base still points to localhost, override with production URL
+if (typeof window !== 'undefined') {
+  const host = window.location.hostname
+  const isRender = host.endsWith('onrender.com')
+  if (isRender && (!resolvedBase || resolvedBase.includes('localhost'))) {
+    resolvedBase = 'https://finsmart-backend-558n.onrender.com'
+  }
+}
+export const apiBaseUrl: string = resolvedBase
 
 const api = axios.create({
   baseURL: apiBaseUrl,
