@@ -23,24 +23,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(accessToken)
   }, [accessToken])
 
-  // Bootstrap session on initial load using refresh cookie
+  // Bootstrap session on initial load.
+  // Try a direct bootstrap first (works if refresh cookie is present) without relying on diagnostics.
   useEffect(() => {
     (async () => {
       try {
-        const diag = await getDiagnostics()
-        if (diag?.cookies?.hasRefreshToken) {
-          const r = await api.post('/api/auth/bootstrap')
-          const token = r.data?.accessToken
-          const user = r.data?.user
-          if (token) setAccessToken(token)
-          if (token) setToken(token)
-          if (user) setUser(user)
-        }
+        // Attempt bootstrap regardless; harmlessly 401s if no cookie
+        const r = await api.post('/api/auth/bootstrap')
+        const token = r.data?.accessToken
+        const user = r.data?.user
+        if (token) setAccessToken(token)
+        if (token) setToken(token)
+        if (user) setUser(user)
+        setCanRefresh(true)
       } catch {
+        // No valid session; ensure clean state
         setUser(null)
         setToken(null)
+        setCanRefresh(false)
       } finally {
         setLoading(false)
+        // Fire-and-forget diagnostics to aid interceptor refresh later and debugging
+        try { await getDiagnostics() } catch {}
       }
     })()
   }, [])

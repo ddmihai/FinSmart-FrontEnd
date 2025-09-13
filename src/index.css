@@ -20,11 +20,17 @@ body {
 }
 
 .btn {
-  @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors;
+  @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors;
+}
+.btn-secondary {
+  @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white border border-white/10;
+}
+.btn-ghost {
+  @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-transparent hover:bg-white/10 text-white;
 }
 
 .input {
-  @apply w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
+  @apply w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
   @apply border-gray-300 bg-white text-gray-900 placeholder-gray-500;
 }
 .dark .input {
