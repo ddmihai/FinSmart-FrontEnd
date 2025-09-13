@@ -4,12 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { AuthProvider } from './state/AuthContext'
-// Register PWA service worker (no top-level await for wider targets)
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { registerSW } from 'virtual:pwa-register'
+// Ensure no service worker is active (no client-side caching)
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  try { registerSW({ immediate: true }) } catch { /* no-op */ }
+  try { navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {}) } catch {}
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

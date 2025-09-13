@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import { parsePoundsToPence } from '../lib/money'
+import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import Progress from '../components/Progress'
 
 type Goal = { _id: string; name: string; target: number; saved: number }
@@ -58,7 +58,7 @@ export default function Goals() {
           <div key={g._id} className="card p-4">
             <div className="flex items-center justify-between">
               <div className="font-semibold">{g.name}</div>
-              <div className="text-sm opacity-80">£{(g.saved/100).toFixed(2)} / £{(g.target/100).toFixed(2)}</div>
+              <div className="text-sm opacity-80">{formatPenceToPounds(g.saved)} / {formatPenceToPounds(g.target)}</div>
             </div>
             <div className="mt-3"><Progress value={g.saved} max={g.target} /></div>
             <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -74,4 +74,3 @@ export default function Goals() {
     </div>
   )
 }
-

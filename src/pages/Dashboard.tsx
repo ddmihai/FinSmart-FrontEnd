@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import api from '../lib/api'
-import { parsePoundsToPence } from '../lib/money'
+import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import { isValidAccountNumber, isValidSortCode, required } from '../lib/validation'
 import Modal from '../components/Modal'
 import Progress from '../components/Progress'
@@ -83,7 +83,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm opacity-80">{a.type}</div>
-                <div className="text-2xl font-semibold">£{(a.balance/100).toFixed(2)}</div>
+                <div className="text-2xl font-semibold">{formatPenceToPounds(a.balance)}</div>
               </div>
               <div className="text-sm text-right opacity-80">
                 <div>{a.sortCode}</div>
@@ -107,7 +107,7 @@ export default function Dashboard() {
             <li key={t._id} className="py-2 flex items-center justify-between">
               <span>{t.name}</span>
               <span className={t.type.includes('expense') || t.type.includes('out') ? 'text-red-600' : 'text-green-600'}>
-                {t.type.includes('expense') || t.type.includes('out') ? '-' : '+'}£{(t.amount/100).toFixed(2)}
+                {t.type.includes('expense') || t.type.includes('out') ? '-' : '+'}{formatPenceToPounds(t.amount)}
               </span>
             </li>
           ))}
@@ -121,7 +121,7 @@ export default function Dashboard() {
             <div key={g._id} className="border rounded p-3">
               <div className="flex items-center justify-between">
                 <div className="font-medium">{g.name}</div>
-                <div className="text-sm opacity-80">£{(g.saved/100).toFixed(2)} / £{(g.target/100).toFixed(2)}</div>
+                <div className="text-sm opacity-80">{formatPenceToPounds(g.saved)} / {formatPenceToPounds(g.target)}</div>
               </div>
               <div className="mt-2"><Progress value={g.saved} max={g.target} /></div>
             </div>

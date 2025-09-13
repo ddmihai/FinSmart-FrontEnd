@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
-import { BarChart2, CreditCard, Home, LineChart, LogOut, Receipt, Settings as SettingsIcon, Send, Bell, Menu } from 'lucide-react'
+import { BarChart2, CreditCard, Home, LineChart, LogOut, Receipt, Settings as SettingsIcon, Send, Bell, Menu, Info, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 
@@ -31,6 +31,14 @@ export default function Shell() {
     try {
       await api.post('/api/notifications/read', { ids: items.map((i) => i._id) })
       await load()
+      setOpen(false)
+    } catch {}
+  }
+  const markOne = async (id: string) => {
+    try {
+      await api.post('/api/notifications/read', { ids: [id] })
+      await load()
+      setOpen(false)
     } catch {}
   }
   return (
@@ -60,6 +68,8 @@ export default function Shell() {
             <NavItem to="/analytics" icon={<BarChart2 size={18} />}>Analytics</NavItem>
             <NavItem to="/settings" icon={<SettingsIcon size={18} />}>Settings</NavItem>
             <NavItem to="/diagnostics" icon={<SettingsIcon size={18} />}>Diagnostics</NavItem>
+            <NavItem to="/about" icon={<Info size={18} />}>About</NavItem>
+            <NavItem to="/contact" icon={<Mail size={18} />}>Contact</NavItem>
           </nav>
         </aside>
         <main className="p-4 md:p-8 pb-24">
@@ -72,19 +82,31 @@ export default function Shell() {
             <button className="btn" onClick={logout}><LogOut size={16}/> Logout</button>
           </header>
         {open && (
-          <div className="card p-4 mb-4">
+          <div className="card p-4 mb-4 backdrop-blur-md bg-white/10 dark:bg-slate-800/20">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Notifications</h3>
               <button className="text-sm underline" onClick={markAll}>Mark all read</button>
             </div>
-            <ul className="mt-2 space-y-2 max-h-64 overflow-auto">
+            <ul className="mt-3 divide-y divide-white/10 max-h-72 overflow-auto">
               {items.map((n) => (
-                <li key={n._id} className={`border rounded-md p-2 ${n.read ? 'opacity-60' : ''}`}>
-                  <div className="text-sm font-medium">{n.title}</div>
-                  {n.body && <div className="text-xs opacity-80">{n.body}</div>}
-                  <div className="text-[10px] opacity-60">{new Date(n.createdAt).toLocaleString()}</div>
+                <li key={n._id} className={`py-2 flex items-start gap-3 ${n.read ? 'opacity-60' : ''}`}>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${iconClasses(n.type)}`}>
+                    {typeEmoji(n.type)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium truncate">{n.title}</div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10">{n.type}</span>
+                    </div>
+                    {n.body && <div className="text-xs opacity-80 truncate">{n.body}</div>}
+                    <div className="text-[10px] opacity-60 flex items-center gap-2">
+                      <span>{new Date(n.createdAt).toLocaleString()}</span>
+                      {!n.read && <button className="underline" onClick={() => markOne(n._id)}>Mark read</button>}
+                    </div>
+                  </div>
                 </li>
               ))}
+              {items.length === 0 && <li className="py-4 text-sm opacity-70">No notifications</li>}
             </ul>
           </div>
         )}
@@ -113,6 +135,8 @@ export default function Shell() {
               <NavItem to="/analytics" icon={<BarChart2 size={18} />}>Analytics</NavItem>
               <NavItem to="/settings" icon={<SettingsIcon size={18} />}>Settings</NavItem>
               <NavItem to="/diagnostics" icon={<SettingsIcon size={18} />}>Diagnostics</NavItem>
+              <NavItem to="/about" icon={<Info size={18} />}>About</NavItem>
+              <NavItem to="/contact" icon={<Mail size={18} />}>Contact</NavItem>
             </nav>
           </div>
         </div>
@@ -146,4 +170,18 @@ function BottomItem({ to, label, icon }: { to: string; label: string; icon: Reac
       <span className="text-[11px] mt-1">{label}</span>
     </NavLink>
   )
+}
+
+function iconClasses(type: string) {
+  if (type.includes('deposit') || type.includes('transfer-in')) return 'bg-green-600/20 text-green-300'
+  if (type.includes('spend') || type.includes('transfer-out')) return 'bg-red-600/20 text-red-300'
+  if (type.includes('budget')) return 'bg-yellow-600/20 text-yellow-300'
+  return 'bg-blue-600/20 text-blue-300'
+}
+
+function typeEmoji(type: string) {
+  if (type.includes('deposit') || type.includes('transfer-in')) return '⬆'
+  if (type.includes('spend') || type.includes('transfer-out')) return '⬇'
+  if (type.includes('budget')) return '⚠'
+  return '•'
 }

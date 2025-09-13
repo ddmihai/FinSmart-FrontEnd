@@ -9,8 +9,10 @@ type Recipient = { _id: string; name: string; sortCode: string; accountNumber: s
 export default function Transfers() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [fromAccountId, setFromAccountId] = useState('')
-  const [tab, setTab] = useState<'send'|'frequent'|'find'>('send')
-  const [form, setForm] = useState<any>({ toName: '', toSortCode: '', toAccountNumber: '', amount: '', reference: '' })
+  const [tab, setTab] = useState<'send'|'frequent'|'find'|'scheduled'>('send')
+  const [scheduled, setScheduled] = useState<any[]>([])
+  const [schedule, setSchedule] = useState<any>({ runAt: '' })
+  const [form, setForm] = useState<any>({ toName: '', toSortCode: '', toAccountNumber: '', amount: '', reference: '', note: '', saveRecipient: true })
   const [recipients, setRecipients] = useState<Recipient[]>([])
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<any | null>(null)
@@ -23,12 +25,17 @@ export default function Transfers() {
       const first = a.data[0]?._id || ''
       setFromAccountId(first)
       await loadRecipients()
+      try { const s = await api.get('/api/transfers/scheduled'); setScheduled(s.data) } catch {}
     })()
   }, [])
 
   const loadRecipients = async () => {
     const r = await api.get('/api/transfers/recipients')
     setRecipients(r.data)
+  }
+  const loadScheduled = async () => {
+    const r = await api.get('/api/transfers/scheduled')
+    setScheduled(r.data)
   }
 
   const send = async () => {
@@ -39,9 +46,12 @@ export default function Transfers() {
       if (!isValidAccountNumber(form.toAccountNumber)) throw new Error('Account number must be 8 digits')
       const pence = parsePoundsToPence(form.amount)
       if (pence == null) throw new Error('Enter a valid amount (e.g., 12.34)')
-      await api.post('/api/transfers/send', { fromAccountId, toName: form.toName, toSortCode: form.toSortCode, toAccountNumber: form.toAccountNumber, amount: pence, reference: form.reference })
+      await api.post('/api/transfers/send', { fromAccountId, toName: form.toName, toSortCode: form.toSortCode, toAccountNumber: form.toAccountNumber, amount: pence, reference: form.reference, note: form.note || undefined })
+      if (form.saveRecipient) {
+        try { await api.post('/api/transfers/recipients', { name: form.toName, sortCode: form.toSortCode, accountNumber: form.toAccountNumber }) } catch {}
+      }
       alert('Sent!')
-      setForm({ toName: '', toSortCode: '', toAccountNumber: '', amount: '', reference: '' })
+      setForm({ toName: '', toSortCode: '', toAccountNumber: '', amount: '', reference: '', note: '' })
       await loadRecipients()
     } catch (e: any) {
       setErr(e?.message || e.response?.data?.error || 'Transfer failed')
@@ -67,6 +77,7 @@ export default function Transfers() {
         <button className={`btn ${tab==='send'?'':'opacity-70'}`} onClick={()=>setTab('send')}>Send</button>
         <button className={`btn ${tab==='frequent'?'':'opacity-70'}`} onClick={()=>setTab('frequent')}>Frequently Paid</button>
         <button className={`btn ${tab==='find'?'':'opacity-70'}`} onClick={()=>setTab('find')}>Find User</button>
+        <button className={`btn ${tab==='scheduled'?'':'opacity-70'}`} onClick={()=>setTab('scheduled')}>Scheduled</button>
       </div>
 
       {tab==='send' && (
@@ -80,6 +91,8 @@ export default function Transfers() {
           <input className="input" placeholder="Account number (8 digits)" pattern="\d{8}" value={form.toAccountNumber} onChange={e=>setForm({...form, toAccountNumber: e.target.value})} />
           <input className="input" type="number" step="0.01" min={0.01} placeholder="Amount (£)" value={form.amount} onChange={e=>setForm({...form, amount: e.target.value})} />
           <input className="input" placeholder="Reference (optional)" value={form.reference} onChange={e=>setForm({...form, reference: e.target.value})} />
+          <input className="input" placeholder="Note (optional, not shared)" value={form.note} onChange={e=>setForm({...form, note: e.target.value})} />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.saveRecipient} onChange={e=>setForm({...form, saveRecipient: e.target.checked})} /> Save recipient</label>
           <button className="btn" onClick={send}>Send money</button>
         </div>
       )}
@@ -118,6 +131,44 @@ export default function Transfers() {
               {result.account && <button className="btn mt-2" onClick={() => { setTab('send'); setForm({ ...form, toName: result.user.name, toSortCode: result.account.sortCode, toAccountNumber: result.account.accountNumber }) }}>Use recipient</button>}
             </div>
           )}
+        </div>
+      )}
+
+      {tab==='scheduled' && (
+        <div className="card p-4 space-y-3">
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <div className="font-medium">New scheduled payment</div>
+              <select className="input" value={fromAccountId} onChange={e=>setFromAccountId(e.target.value)}>
+                {accounts.map(a => <option key={a._id} value={a._id}>{a.type}</option>)}
+              </select>
+              <input className="input" placeholder="Recipient name" value={form.toName} onChange={e=>setForm({...form, toName: e.target.value})} />
+              <input className="input" placeholder="Sort code (12-34-56)" value={form.toSortCode} onChange={e=>setForm({...form, toSortCode: e.target.value})} />
+              <input className="input" placeholder="Account number (8 digits)" value={form.toAccountNumber} onChange={e=>setForm({...form, toAccountNumber: e.target.value})} />
+              <input className="input" type="number" step="0.01" min={0.01} placeholder="Amount (£)" value={form.amount} onChange={e=>setForm({...form, amount: e.target.value})} />
+              <input className="input" type="datetime-local" value={schedule.runAt} onChange={e=>setSchedule({ runAt: e.target.value })} />
+              <button className="btn" onClick={async ()=>{
+                try {
+                  const pence = parsePoundsToPence(form.amount)
+                  if (pence == null) throw new Error('Enter a valid amount')
+                  await api.post('/api/transfers/scheduled', { fromAccountId, toName: form.toName, toSortCode: form.toSortCode, toAccountNumber: form.toAccountNumber, amount: pence, runAt: schedule.runAt, reference: form.reference || undefined })
+                  await loadScheduled(); alert('Scheduled payment created')
+                } catch (e: any) { alert(e?.message || e.response?.data?.error || 'Failed') }
+              }}>Create</button>
+            </div>
+            <div>
+              <div className="font-medium mb-2">Pending scheduled payments</div>
+              <ul className="space-y-2">
+                {scheduled.map(s => (
+                  <li key={s._id} className="border rounded p-2 flex items-center justify-between">
+                    <span>{new Date(s.runAt).toLocaleString()} — {s.to.name} — £{(s.amount/100).toFixed(2)}</span>
+                    <button className="btn" onClick={async ()=>{ await api.post(`/api/transfers/scheduled/${s._id}/cancel`); await loadScheduled() }}>Cancel</button>
+                  </li>
+                ))}
+                {scheduled.length === 0 && <li className="opacity-70">No scheduled payments</li>}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>

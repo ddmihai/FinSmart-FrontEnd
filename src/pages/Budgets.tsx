@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import { parsePoundsToPence } from '../lib/money'
+import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import Modal from '../components/Modal'
 
 type Usage = Record<string, { limit: number; spent: number }>
@@ -112,13 +112,13 @@ export default function Budgets() {
           <div key={cat} className="card p-4">
             <div className="flex items-center justify-between">
               <div className="font-semibold">{cat}</div>
-              <div className="text-sm opacity-80">Limit £{(u.limit/100).toFixed(2)}</div>
+              <div className="text-sm opacity-80">Limit {formatPenceToPounds(u.limit)}</div>
             </div>
             <div className="mt-3">
               <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
                 <div className={`h-2 rounded-full ${u.spent > u.limit ? 'bg-red-600' : 'bg-blue-600'}`} style={{ width: `${Math.min(100, (u.spent / Math.max(1,u.limit))*100)}%` }} />
               </div>
-              <div className="mt-1 text-sm opacity-80">Spent £{(u.spent/100).toFixed(2)}</div>
+              <div className="mt-1 text-sm opacity-80">Spent {formatPenceToPounds(u.spent)}</div>
             </div>
           </div>
         ))}

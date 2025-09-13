@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      injectRegister: null, // do not auto-inject service worker registration
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -28,12 +29,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.destination === 'document' || request.destination === 'style' || request.destination === 'script' || request.destination === 'image' || request.destination === 'font',
-            handler: 'StaleWhileRevalidate'
-          }
-        ]
+        runtimeCaching: []
       }
     })
   ],

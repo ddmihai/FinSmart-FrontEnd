@@ -7,6 +7,10 @@ export function parsePoundsToPence(input: string): number | null {
 }
 
 export function formatPenceToPounds(pence: number): string {
-  return (pence / 100).toFixed(2)
+  const n = pence / 100
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n)
 }
 
+export function formatGBP(n: number): string {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n)
+}

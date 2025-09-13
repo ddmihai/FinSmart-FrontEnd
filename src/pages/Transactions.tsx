@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import api, { apiBaseUrl } from '../lib/api'
 import Modal from '../components/Modal'
-import { parsePoundsToPence } from '../lib/money'
+import { parsePoundsToPence, formatPenceToPounds } from '../lib/money'
 import { required } from '../lib/validation'
 import { Calendar, Search as SearchIcon } from 'lucide-react'
 
 type Account = { _id: string; type: string }
-type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string }
+type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string; note?: string; category?: string }
+type Budget = { _id: string; category: string; limit: number }
 
 export default function Transactions() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -19,6 +20,8 @@ export default function Transactions() {
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [expense, setExpense] = useState<any>({ name: '', category: '', amount: '', note: '' })
   const [expenseErr, setExpenseErr] = useState<string | null>(null)
+  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [flagOpen, setFlagOpen] = useState<string | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -26,6 +29,11 @@ export default function Transactions() {
       setAccounts(a.data)
       const first = a.data[0]?._id || ''
       setAccountId(first)
+      // Load available budget categories for the dropdown
+      try {
+        const b = await api.get('/api/budgets')
+        setBudgets(b.data || [])
+      } catch {/* ignore if budgets API unavailable */}
     })()
   }, [])
 
@@ -108,6 +116,15 @@ export default function Transactions() {
           <button className="btn" onClick={downloadPdf}>Download PDF</button>
           <button className="btn" onClick={async () => {
             try {
+              const res = await api.get('/api/statements/export', { params: { accountId }, responseType: 'blob' })
+              const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+              const a = document.createElement('a'); a.href = url; a.download = 'statement.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+            } catch (e: any) {
+              alert(e.response?.data?.error || 'Export failed')
+            }
+          }}>Export CSV</button>
+          <button className="btn" onClick={async () => {
+            try {
               const r = await api.post('/api/statements/share', { accountId, ttlHours: 24, filters: { accountId } })
               const url = `${apiBaseUrl}/api/statements/shared/${r.data.token}`
               setShareUrl(url); alert('Share link created')
@@ -120,7 +137,18 @@ export default function Transactions() {
         <form onSubmit={addExpense} className="space-y-3">
           {expenseErr && <div className="text-sm text-red-600">{expenseErr}</div>}
           <input className="input" placeholder="Name" value={expense.name} onChange={e=>setExpense({ ...expense, name: e.target.value })} required />
-          <input className="input" placeholder="Category (optional)" value={expense.category} onChange={e=>setExpense({ ...expense, category: e.target.value })} />
+          <div>
+            <label className="block text-sm opacity-80 mb-1">Category (optional)</label>
+            <select className="input" value={expense.category} onChange={e=>setExpense({ ...expense, category: e.target.value })}>
+              <option value="">— None —</option>
+              {budgets.map((b) => (
+                <option key={b._id} value={b.category}>{b.category}</option>
+              ))}
+            </select>
+            {budgets.length === 0 && (
+              <div className="text-xs opacity-70 mt-1">No categories yet. Create one in Budgets.</div>
+            )}
+          </div>
           <input className="input" type="number" step="0.01" min={0.01} placeholder="Amount (£)" value={expense.amount} onChange={e=>setExpense({ ...expense, amount: e.target.value })} required />
           <input className="input" placeholder="Note (optional)" value={expense.note} onChange={e=>setExpense({ ...expense, note: e.target.value })} />
           <button className="btn w-full" type="submit">Add</button>
@@ -132,15 +160,28 @@ export default function Transactions() {
             <tr>
               <th className="text-left px-3 py-2">Date</th>
               <th className="text-left px-3 py-2">Name</th>
+              <th className="text-left px-3 py-2">Note</th>
               <th className="text-right px-3 py-2">Amount</th>
+              <th className="text-right px-3 py-2">Flag</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(r => (
               <tr key={r._id} className="border-t border-gray-100 dark:border-gray-800">
                 <td className="px-3 py-2">{r.createdAt.slice(0,10)}</td>
-                <td className="px-3 py-2">{r.name}</td>
-                <td className={`px-3 py-2 text-right ${r.type.includes('expense') || r.type.includes('out') ? 'text-red-600' : 'text-green-600'}`}>{r.type.includes('expense') || r.type.includes('out') ? '-' : '+'}£{(r.amount/100).toFixed(2)}</td>
+                <td className="px-3 py-2">{r.name}{r.category ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-white/10">{r.category}</span> : null}</td>
+                <td className="px-3 py-2 text-sm opacity-80 max-w-[280px] truncate" title={r.note}>{r.note || '—'}</td>
+                <td className={`px-3 py-2 text-right ${r.type.includes('expense') || r.type.includes('out') ? 'text-red-600' : 'text-green-600'}`}>{r.type.includes('expense') || r.type.includes('out') ? '-' : '+'}{formatPenceToPounds(r.amount)}</td>
+                <td className="px-3 py-2 text-right relative">
+                  <button className="btn" onClick={()=> setFlagOpen(flagOpen === r._id ? null : r._id)}>Flag</button>
+                  {flagOpen === r._id && (
+                    <div className="absolute right-0 mt-2 z-50 w-56 rounded-xl border border-white/10 bg-white/90 dark:bg-slate-900/90 backdrop-blur shadow-lg text-left">
+                      <button className="block w-full text-left px-3 py-2 hover:bg-white/10" onClick={async ()=>{ await api.post(`/api/transactions/${r._id}/hide`); setFlagOpen(null); await load(); }}>Hide from statements</button>
+                      <button className="block w-full text-left px-3 py-2 hover:bg-white/10" onClick={async ()=>{ await api.post(`/api/transactions/${r._id}/block-merchant`); setFlagOpen(null); alert('Merchant blocked for future expenses') }}>Block this merchant</button>
+                      <button className="block w-full text-left px-3 py-2 hover:bg-white/10" onClick={()=> setFlagOpen(null)}>Cancel</button>
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

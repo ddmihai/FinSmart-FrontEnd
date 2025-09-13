@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import { Pie, PieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts'
+import { formatPenceToPounds } from '../lib/money'
 
 type Account = { _id: string; type: string }
 
@@ -69,15 +70,15 @@ export default function Analytics() {
       {forecast && (
         <div className="card p-4">
           <h2 className="font-semibold mb-2">Cashflow Forecast</h2>
-          <div className="text-sm">Current balance: £{(forecast.balanceNow/100).toFixed(2)}</div>
-          <div className="text-sm">Projected month-end: £{(forecast.projectedMonthEnd/100).toFixed(2)}</div>
+          <div className="text-sm">Current balance: {formatPenceToPounds(forecast.balanceNow)}</div>
+          <div className="text-sm">Projected month-end: {formatPenceToPounds(forecast.projectedMonthEnd)}</div>
           {forecast.series && (
             <div className="mt-2">
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={forecast.series}>
                   <XAxis dataKey="date" hide/>
                   <YAxis hide/>
-                  <Tooltip formatter={(v)=>`£${(Number(v)/100).toFixed(2)}`} labelFormatter={()=>''}/>
+                  <Tooltip formatter={(v)=>formatPenceToPounds(Number(v))} labelFormatter={()=>''}/>
                   <Line type="monotone" dataKey="balance" stroke="#2563eb" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
