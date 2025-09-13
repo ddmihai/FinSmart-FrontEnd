@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import api from '../lib/api'
+import { useEffect, useState } from 'react'
+import api, { apiBaseUrl } from '../lib/api'
+import Modal from '../components/Modal'
+import { parsePoundsToPence } from '../lib/money'
+import { required } from '../lib/validation'
 
 type Account = { _id: string; type: string }
 type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string }
@@ -11,6 +14,10 @@ export default function Transactions() {
   const [q, setQ] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [expenseOpen, setExpenseOpen] = useState(false)
+  const [expense, setExpense] = useState<any>({ name: '', category: '', amount: '', note: '' })
+  const [expenseErr, setExpenseErr] = useState<string | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -28,6 +35,41 @@ export default function Transactions() {
   }
   useEffect(() => { load() }, [accountId])
 
+  const downloadPdf = async () => {
+    if (!accountId) return
+    try {
+      const res = await api.get('/api/statements/download', { params: { accountId }, responseType: 'blob' })
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'statement.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Download failed')
+    }
+  }
+
+  const addExpense = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!accountId) return
+    try {
+      setExpenseErr(null)
+      if (!required(expense.name, 2)) throw new Error('Name is required')
+      const pence = parsePoundsToPence(expense.amount)
+      if (pence == null) throw new Error('Enter a valid amount (e.g., 12.34)')
+      await api.post('/api/transactions/expense', { accountId, amount: pence, name: expense.name, category: expense.category || undefined, note: expense.note || undefined })
+      setExpenseOpen(false)
+      setExpense({ name: '', category: '', amount: '', note: '' })
+      await load()
+    } catch (err: any) {
+      setExpenseErr(err?.message || err.response?.data?.error || 'Failed to add expense')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Transactions</h1>
@@ -40,9 +82,28 @@ export default function Transactions() {
         <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
         <div className="md:col-span-4">
           <button className="btn" onClick={load}>Search</button>
-          <a className="btn ml-2" href={`/api/statements/download?accountId=${accountId}`} target="_blank">Download PDF</a>
+          <button className="btn ml-2" onClick={() => setExpenseOpen(true)}>Add Expense</button>
+          <button className="btn ml-2" onClick={downloadPdf}>Download PDF</button>
+          <button className="btn ml-2" onClick={async () => {
+            try {
+              const r = await api.post('/api/statements/share', { accountId, ttlHours: 24, filters: { accountId } })
+              const url = `${apiBaseUrl}/api/statements/shared/${r.data.token}`
+              setShareUrl(url); alert('Share link created')
+            } catch (e: any) { alert(e.response?.data?.error || 'Share failed') }
+          }}>Share Statement</button>
+          {shareUrl && <div className="mt-2 text-sm">Share URL: <a className="underline" href={shareUrl} target="_blank" rel="noreferrer">{shareUrl}</a></div>}
         </div>
       </div>
+      <Modal open={expenseOpen} onClose={() => setExpenseOpen(false)} title="Add Expense">
+        <form onSubmit={addExpense} className="space-y-3">
+          {expenseErr && <div className="text-sm text-red-600">{expenseErr}</div>}
+          <input className="input" placeholder="Name" value={expense.name} onChange={e=>setExpense({ ...expense, name: e.target.value })} required />
+          <input className="input" placeholder="Category (optional)" value={expense.category} onChange={e=>setExpense({ ...expense, category: e.target.value })} />
+          <input className="input" type="number" step="0.01" min={0.01} placeholder="Amount (£)" value={expense.amount} onChange={e=>setExpense({ ...expense, amount: e.target.value })} required />
+          <input className="input" placeholder="Note (optional)" value={expense.note} onChange={e=>setExpense({ ...expense, note: e.target.value })} />
+          <button className="btn w-full" type="submit">Add</button>
+        </form>
+      </Modal>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-100 dark:bg-gray-800">
@@ -66,4 +127,3 @@ export default function Transactions() {
     </div>
   )
 }
-

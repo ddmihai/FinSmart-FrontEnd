@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+export const apiBaseUrl: string = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000',
+  baseURL: apiBaseUrl,
   withCredentials: true
 })
 
@@ -44,7 +46,7 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
     const url = (original?.url || '').toString()
-    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/security/csrf-token')
+    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/security/csrf-token')
     if (error.response?.status === 401 && !original._retry && !isAuthPath) {
       if (refreshing) {
         await new Promise<void>((resolve) => pending.push(resolve))

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import { Pie, PieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
+import { Pie, PieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts'
 
 type Account = { _id: string; type: string }
 
@@ -8,6 +8,7 @@ export default function Analytics() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState('')
   const [data, setData] = useState<any>({ income: 0, expenses: 0, byCategory: {} })
+  const [forecast, setForecast] = useState<{ balanceNow: number; projectedMonthEnd: number; series?: Array<{ date: string; balance: number }> } | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -22,6 +23,10 @@ export default function Analytics() {
     if (!accountId) return
     const r = await api.get('/api/analytics', { params: { accountId } })
     setData(r.data)
+    try {
+      const f = await api.get('/api/analytics/forecast', { params: { accountId } })
+      setForecast(f.data)
+    } catch {}
   }
   useEffect(() => { load() }, [accountId])
 
@@ -61,7 +66,25 @@ export default function Analytics() {
           </ResponsiveContainer>
         </div>
       </div>
+      {forecast && (
+        <div className="card p-4">
+          <h2 className="font-semibold mb-2">Cashflow Forecast</h2>
+          <div className="text-sm">Current balance: £{(forecast.balanceNow/100).toFixed(2)}</div>
+          <div className="text-sm">Projected month-end: £{(forecast.projectedMonthEnd/100).toFixed(2)}</div>
+          {forecast.series && (
+            <div className="mt-2">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={forecast.series}>
+                  <XAxis dataKey="date" hide/>
+                  <YAxis hide/>
+                  <Tooltip formatter={(v)=>`£${(Number(v)/100).toFixed(2)}`} labelFormatter={()=>''}/>
+                  <Line type="monotone" dataKey="balance" stroke="#2563eb" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
-
