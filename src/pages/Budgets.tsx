@@ -1,34 +1,98 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
+import { parsePoundsToPence } from '../lib/money'
 
 type Usage = Record<string, { limit: number; spent: number }>
+type Budget = { _id: string; category: string; limit: number }
 
 export default function Budgets() {
   const [usage, setUsage] = useState<Usage>({})
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [category, setCategory] = useState('Food')
-  const [limit, setLimit] = useState(0)
+  const [limit, setLimit] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const load = async () => {
     const r = await api.get('/api/budgets/usage')
     setUsage(r.data)
+    const b = await api.get('/api/budgets')
+    setBudgets(b.data)
   }
 
   useEffect(() => { load() }, [])
 
   const save = async () => {
-    await api.post('/api/budgets', { category, limit })
-    setCategory('')
-    setLimit(0)
+    try {
+      setErr(null)
+      const p = parsePoundsToPence(limit)
+      if (p == null) throw new Error('Enter a valid limit (e.g., 250.00)')
+      await api.post('/api/budgets', { category, limit: p })
+      setCategory('')
+      setLimit('')
+      await load()
+      setToast('Budget created')
+      setTimeout(()=>setToast(null), 2000)
+    } catch (e: any) { setErr(e?.message || e.response?.data?.error || 'Failed') }
+  }
+
+  const update = async (id: string, newLimitStr: string) => {
+    try {
+      const p = parsePoundsToPence(newLimitStr)
+      if (p == null) throw new Error('Invalid')
+      await api.patch(`/api/budgets/${id}`, { limit: p })
+      await load()
+      setToast('Budget updated')
+      setTimeout(()=>setToast(null), 2000)
+    } catch {}
+  }
+
+  const remove = async (id: string) => {
+    if (!confirm('Delete this budget?')) return
+    await api.delete(`/api/budgets/${id}`)
     await load()
+    setToast('Budget deleted')
+    setTimeout(()=>setToast(null), 2000)
   }
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Budgets</h1>
       <div className="card p-4 flex flex-wrap gap-2 items-center">
+        {err && <div className="text-sm text-red-600 w-full">{err}</div>}
         <input className="input max-w-xs" placeholder="Category" value={category} onChange={e => setCategory(e.target.value)} />
-        <input className="input max-w-xs" type="number" min={0} placeholder="Limit (pence)" value={limit} onChange={e => setLimit(parseInt(e.target.value||'0'))} />
+        <input className="input max-w-xs" type="number" step="0.01" min={0} placeholder="Limit (£)" value={limit} onChange={e => setLimit(e.target.value)} />
         <button className="btn" onClick={save}>Save</button>
+      </div>
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="px-4 py-2 rounded-lg shadow-md bg-gray-900 text-white">{toast}</div>
+        </div>
+      )}
+      <div className="card p-4">
+        <h2 className="font-semibold mb-2">Current Budgets</h2>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100 dark:bg-gray-800">
+            <tr>
+              <th className="text-left px-3 py-2">Category</th>
+              <th className="text-left px-3 py-2">Limit (£)</th>
+              <th className="text-right px-3 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {budgets.map(b => (
+              <tr key={b._id} className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2">{b.category}</td>
+                <td className="px-3 py-2">
+                  <input className="input max-w-[140px]" defaultValue={(b.limit/100).toFixed(2)} onBlur={e => update(b._id, e.target.value)} />
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button className="btn" onClick={() => remove(b._id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {Object.entries(usage).map(([cat, u]) => (
@@ -49,4 +113,3 @@ export default function Budgets() {
     </div>
   )
 }
-
