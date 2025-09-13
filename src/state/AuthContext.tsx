@@ -32,8 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (diag?.cookies?.hasRefreshToken) {
           const r = await api.post('/api/auth/refresh')
           const token = r.data?.accessToken
-          if (token) setToken(token)
           if (token) {
+            // Immediately apply token to axios defaults for subsequent calls
+            setAccessToken(token)
+            setToken(token)
             const me = await api.get('/api/auth/me')
             setUser(me.data)
           }
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.post('/api/auth/login', { email, password })
     setUser(res.data.user)
+    setAccessToken(res.data.accessToken)
     setToken(res.data.accessToken)
     setCanRefresh(true)
   }
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, name: string, password: string) => {
     const res = await api.post('/api/auth/signup', { email, name, password })
     setUser(res.data.user)
+    setAccessToken(res.data.accessToken)
     setToken(res.data.accessToken)
     setCanRefresh(true)
   }
