@@ -30,15 +30,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await ensureCsrf()
         const diag = await getDiagnostics()
         if (diag?.cookies?.hasRefreshToken) {
-          const r = await api.post('/api/auth/refresh')
+          const r = await api.post('/api/auth/bootstrap')
           const token = r.data?.accessToken
-          if (token) {
-            // Immediately apply token to axios defaults for subsequent calls
-            setAccessToken(token)
-            setToken(token)
-            const me = await api.get('/api/auth/me')
-            setUser(me.data)
-          }
+          const user = r.data?.user
+          if (token) setAccessToken(token)
+          if (token) setToken(token)
+          if (user) setUser(user)
         }
       } catch {
         setUser(null)
