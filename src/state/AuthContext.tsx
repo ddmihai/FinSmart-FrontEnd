@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import api, { ensureCsrf, setAccessToken, getDiagnostics, setCanRefresh } from '../lib/api'
+import api, { setAccessToken, getDiagnostics, setCanRefresh } from '../lib/api'
 
 type User = { id: string; email: string; name: string }
 
@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        await ensureCsrf()
         const diag = await getDiagnostics()
         if (diag?.cookies?.hasRefreshToken) {
           const r = await api.post('/api/auth/bootstrap')

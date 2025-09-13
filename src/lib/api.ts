@@ -25,16 +25,14 @@ export async function getDiagnostics() {
 
 const api = axios.create({
   baseURL: apiBaseUrl,
-  withCredentials: true,
-  xsrfCookieName: '_csrf',
-  xsrfHeaderName: 'x-csrf-token'
+  withCredentials: true
 })
 
 let accessToken: string | null = null
-let csrfToken: string | null = null
 
 export function setAccessToken(token: string | null) {
   accessToken = token
+  // Authorization header is optional now; cookie-based auth is primary.
   if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`
   } else {
@@ -42,34 +40,14 @@ export function setAccessToken(token: string | null) {
   }
 }
 
-export async function ensureCsrf() {
-  if (csrfToken) return csrfToken
-  const res = await api.get('/api/security/csrf-token')
-  csrfToken = res.data?.csrfToken
-  if (csrfToken) api.defaults.headers.common['x-csrf-token'] = csrfToken
-  return csrfToken
-}
+// CSRF disabled
 
 api.interceptors.request.use(async (config) => {
-  // Always attach Authorization if we have a token
+  // Optionally attach Authorization header if we track it, but cookie auth is primary
   if (accessToken) {
     config.headers = config.headers || {}
     if (!('Authorization' in config.headers)) {
       (config.headers as any)['Authorization'] = `Bearer ${accessToken}`
-    }
-  }
-  // Always attach CSRF header if we have it
-  if (csrfToken) {
-    config.headers = config.headers || {}
-    ;(config.headers as any)['x-csrf-token'] = csrfToken
-  }
-  if (!csrfToken) {
-    const url = (config.url || '').toString()
-    const isCsrfEndpoint = url.includes('/api/security/csrf-token')
-    if (!isCsrfEndpoint) {
-      const t = await ensureCsrf()
-      config.headers = config.headers || {}
-      ;(config.headers as any)['x-csrf-token'] = t || csrfToken
     }
   }
   return config
@@ -83,15 +61,7 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
     const url = (original?.url || '').toString()
-    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/security/csrf-token') || url.includes('/api/diagnostics')
-    // Handle CSRF mismatch gracefully: refresh token then retry once
-    if (error.response?.status === 403 && !original._csrfRetry && !isAuthPath) {
-      try {
-        await ensureCsrf()
-        original._csrfRetry = true
-        return api(original)
-      } catch {/* fallthrough */}
-    }
+    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/diagnostics')
     if (error.response?.status === 401 && !original._retry && !isAuthPath && canRefresh) {
       if (refreshing) {
         await new Promise<void>((resolve) => pending.push(resolve))
