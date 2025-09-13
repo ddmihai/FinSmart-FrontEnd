@@ -1,0 +1,12 @@
+services:
+  - type: static
+    name: finsmart-frontend
+    env: static
+    plan: free
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: VITE_API_URL
+        value: "https://finsmart-backend.onrender.com"
+
