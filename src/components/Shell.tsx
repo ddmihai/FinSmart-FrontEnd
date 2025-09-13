@@ -62,7 +62,7 @@ export default function Shell() {
             <NavItem to="/diagnostics" icon={<SettingsIcon size={18} />}>Diagnostics</NavItem>
           </nav>
         </aside>
-        <main className="p-4 md:p-8">
+        <main className="p-4 md:p-8 pb-24">
           <header className="hidden md:flex items-center justify-end mb-6 gap-3">
             {user && <span className="text-sm opacity-80">{user.email}</span>}
             <button className="relative p-2 rounded-lg hover:bg-white/10" onClick={() => setOpen(!open)} aria-label="Notifications">
@@ -88,7 +88,9 @@ export default function Shell() {
             </ul>
           </div>
         )}
-        <Outlet />
+          <div className="max-w-5xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
 

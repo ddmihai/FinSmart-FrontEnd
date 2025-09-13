@@ -73,18 +73,18 @@ export default function Transactions() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Transactions</h1>
-      <div className="grid gap-2 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <select className="input" value={accountId} onChange={e => setAccountId(e.target.value)}>
           {accounts.map(a => <option key={a._id} value={a._id}>{a.type}</option>)}
         </select>
         <input className="input" placeholder="Search name" value={q} onChange={e => setQ(e.target.value)} />
         <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
         <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
-        <div className="md:col-span-4">
+        <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap gap-2">
           <button className="btn" onClick={load}>Search</button>
-          <button className="btn ml-2" onClick={() => setExpenseOpen(true)}>Add Expense</button>
-          <button className="btn ml-2" onClick={downloadPdf}>Download PDF</button>
-          <button className="btn ml-2" onClick={async () => {
+          <button className="btn" onClick={() => setExpenseOpen(true)}>Add Expense</button>
+          <button className="btn" onClick={downloadPdf}>Download PDF</button>
+          <button className="btn" onClick={async () => {
             try {
               const r = await api.post('/api/statements/share', { accountId, ttlHours: 24, filters: { accountId } })
               const url = `${apiBaseUrl}/api/statements/shared/${r.data.token}`
