@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import { parsePoundsToPence } from '../lib/money'
+import Modal from '../components/Modal'
 
 type Usage = Record<string, { limit: number; spent: number }>
 type Budget = { _id: string; category: string; limit: number }
@@ -12,6 +13,7 @@ export default function Budgets() {
   const [limit, setLimit] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const load = async () => {
     const r = await api.get('/api/budgets/usage')
@@ -48,7 +50,6 @@ export default function Budgets() {
   }
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this budget?')) return
     await api.delete(`/api/budgets/${id}`)
     await load()
     setToast('Budget deleted')
@@ -99,7 +100,7 @@ export default function Budgets() {
                   <input className="input max-w-[140px]" defaultValue={(b.limit/100).toFixed(2)} onBlur={e => update(b._id, e.target.value)} />
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button className="btn" onClick={() => remove(b._id)}>Delete</button>
+                  <button className="btn" onClick={() => setConfirmId(b._id)}>Delete</button>
                 </td>
               </tr>
             ))}
