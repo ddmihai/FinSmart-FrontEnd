@@ -11,6 +11,18 @@ if (typeof window !== 'undefined') {
 }
 export const apiBaseUrl: string = resolvedBase
 
+// Track whether a refresh cookie likely exists (from diagnostics or login)
+let canRefresh = false
+export function setCanRefresh(v: boolean) { canRefresh = v }
+
+// Fetch server-side diagnostics to detect refresh-cookie presence and aid troubleshooting
+export async function getDiagnostics() {
+  const r = await api.get('/api/diagnostics')
+  const has = Boolean(r.data?.cookies?.hasRefreshToken)
+  canRefresh = has
+  return r.data
+}
+
 const api = axios.create({
   baseURL: apiBaseUrl,
   withCredentials: true
@@ -55,8 +67,8 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
     const url = (original?.url || '').toString()
-    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/security/csrf-token')
-    if (error.response?.status === 401 && !original._retry && !isAuthPath) {
+    const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/security/csrf-token') || url.includes('/api/diagnostics')
+    if (error.response?.status === 401 && !original._retry && !isAuthPath && canRefresh) {
       if (refreshing) {
         await new Promise<void>((resolve) => pending.push(resolve))
       } else {
@@ -65,8 +77,10 @@ api.interceptors.response.use(
           const res = await api.post('/api/auth/refresh')
           const token = res.data?.accessToken
           if (token) setAccessToken(token)
+          else canRefresh = false
         } catch {
           setAccessToken(null)
+          canRefresh = false
         } finally {
           refreshing = false
           pending.forEach((fn) => fn())

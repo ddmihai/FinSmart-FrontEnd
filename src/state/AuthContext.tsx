@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import api, { ensureCsrf, setAccessToken } from '../lib/api'
+import api, { ensureCsrf, setAccessToken, getDiagnostics, setCanRefresh } from '../lib/api'
 
 type User = { id: string; email: string; name: string }
 
@@ -28,12 +28,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         await ensureCsrf()
-        const r = await api.post('/api/auth/refresh')
-        const token = r.data?.accessToken
-        if (token) setToken(token)
-        if (token) {
-          const me = await api.get('/api/auth/me')
-          setUser(me.data)
+        const diag = await getDiagnostics()
+        if (diag?.cookies?.hasRefreshToken) {
+          const r = await api.post('/api/auth/refresh')
+          const token = r.data?.accessToken
+          if (token) setToken(token)
+          if (token) {
+            const me = await api.get('/api/auth/me')
+            setUser(me.data)
+          }
         }
       } catch {
         setUser(null)
@@ -48,18 +51,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.post('/api/auth/login', { email, password })
     setUser(res.data.user)
     setToken(res.data.accessToken)
+    setCanRefresh(true)
   }
 
   const signup = async (email: string, name: string, password: string) => {
     const res = await api.post('/api/auth/signup', { email, name, password })
     setUser(res.data.user)
     setToken(res.data.accessToken)
+    setCanRefresh(true)
   }
 
   const logout = async () => {
     await api.post('/api/auth/logout')
     setUser(null)
     setToken(null)
+    setCanRefresh(false)
   }
 
   const value = useMemo(() => ({ user, accessToken, loading, login, signup, logout }), [user, accessToken, loading])
