@@ -3,6 +3,7 @@ import api, { apiBaseUrl } from '../lib/api'
 import Modal from '../components/Modal'
 import { parsePoundsToPence } from '../lib/money'
 import { required } from '../lib/validation'
+import { Calendar, Search as SearchIcon } from 'lucide-react'
 
 type Account = { _id: string; type: string }
 type Tx = { _id: string; name: string; amount: number; type: string; createdAt: string }
@@ -74,12 +75,33 @@ export default function Transactions() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Transactions</h1>
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <select className="input" value={accountId} onChange={e => setAccountId(e.target.value)}>
+        <div>
+          <label className="block text-sm opacity-80 mb-1">Account</label>
+          <select className="input" value={accountId} onChange={e => setAccountId(e.target.value)}>
           {accounts.map(a => <option key={a._id} value={a._id}>{a.type}</option>)}
-        </select>
-        <input className="input" placeholder="Search name" value={q} onChange={e => setQ(e.target.value)} />
-        <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
-        <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm opacity-80 mb-1">Search</label>
+          <div className="relative">
+            <input className="input pr-10" placeholder="Search name" value={q} onChange={e => setQ(e.target.value)} />
+            <SearchIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm opacity-80 mb-1">From date</label>
+          <div className="relative">
+            <input className="input pr-10" type="date" placeholder="YYYY-MM-DD" value={from} onChange={e => setFrom(e.target.value)} />
+            <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm opacity-80 mb-1">To date</label>
+          <div className="relative">
+            <input className="input pr-10" type="date" placeholder="YYYY-MM-DD" value={to} onChange={e => setTo(e.target.value)} />
+            <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none" />
+          </div>
+        </div>
         <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap gap-2">
           <button className="btn" onClick={load}>Search</button>
           <button className="btn" onClick={() => setExpenseOpen(true)}>Add Expense</button>

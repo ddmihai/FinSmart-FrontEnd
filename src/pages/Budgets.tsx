@@ -69,6 +69,18 @@ export default function Budgets() {
           <div className="px-4 py-2 rounded-lg shadow-md bg-gray-900 text-white">{toast}</div>
         </div>
       )}
+      {/** Delete confirm modal for mobile Safari where window.confirm can be blocked */}
+      {/** We render this after the toast block for z-order */}
+      {/* @ts-ignore Modal is a simple client component */}
+      <Modal open={Boolean((confirmId as any))} onClose={() => setConfirmId(null)} title="Delete budget?">
+        <div className="space-y-3">
+          <p className="text-sm opacity-80">This action cannot be undone.</p>
+          <div className="flex gap-2">
+            <button className="btn" onClick={() => { if (confirmId) remove(confirmId); setConfirmId(null) }}>Delete</button>
+            <button className="btn" onClick={() => setConfirmId(null)}>Cancel</button>
+          </div>
+        </div>
+      </Modal>
       <div className="card p-4">
         <h2 className="font-semibold mb-2">Current Budgets</h2>
         <table className="w-full text-sm">
