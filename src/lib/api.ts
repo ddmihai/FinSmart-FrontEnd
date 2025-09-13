@@ -77,6 +77,14 @@ api.interceptors.response.use(
     const original = error.config
     const url = (original?.url || '').toString()
     const isAuthPath = url.includes('/api/auth/login') || url.includes('/api/auth/signup') || url.includes('/api/auth/refresh') || url.includes('/api/security/csrf-token') || url.includes('/api/diagnostics')
+    // Handle CSRF mismatch gracefully: refresh token then retry once
+    if (error.response?.status === 403 && !original._csrfRetry && !isAuthPath) {
+      try {
+        await ensureCsrf()
+        original._csrfRetry = true
+        return api(original)
+      } catch {/* fallthrough */}
+    }
     if (error.response?.status === 401 && !original._retry && !isAuthPath && canRefresh) {
       if (refreshing) {
         await new Promise<void>((resolve) => pending.push(resolve))

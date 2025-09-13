@@ -119,7 +119,7 @@ export default function Shell() {
       )}
 
       {/* Mobile bottom nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/90 backdrop-blur border-t border-white/10">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/90 backdrop-blur border-t border-white/10" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="grid grid-cols-4">
           <BottomItem to="/" label="Home" icon={<Home size={18} />} />
           <BottomItem to="/transactions" label="Tx" icon={<Receipt size={18} />} />
