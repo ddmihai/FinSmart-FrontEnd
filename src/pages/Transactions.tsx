@@ -22,6 +22,10 @@ export default function Transactions() {
   const [expenseErr, setExpenseErr] = useState<string | null>(null)
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [flagOpen, setFlagOpen] = useState<string | null>(null)
+  const [includeHidden, setIncludeHidden] = useState(false)
+  const [hiddenOnly, setHiddenOnly] = useState(false)
+  const [blocked, setBlocked] = useState<any[]>([])
+  const [editTx, setEditTx] = useState<{ id: string; name: string; category: string; note: string } | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -39,8 +43,9 @@ export default function Transactions() {
 
   const load = async () => {
     if (!accountId) return
-    const r = await api.get('/api/transactions', { params: { accountId, q, from, to } })
+    const r = await api.get('/api/transactions', { params: { accountId, q, from, to, includeHidden: includeHidden ? 1 : undefined, hiddenOnly: hiddenOnly ? 1 : undefined } })
     setRows(r.data)
+    try { const bl = await api.get('/api/transactions/blocked'); setBlocked(bl.data) } catch {}
   }
   useEffect(() => { load() }, [accountId])
 
